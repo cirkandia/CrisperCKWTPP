@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Tesseract = require('tesseract.js');
 
-const SALIDA_DIR = path.join(__dirname, 'Salida');
+const ENTRADA_DIR = path.join(__dirname, 'entrada');
 const PATRON = /TU_PATRON_AQUI/gi; // Cambia esto por tu patrón o texto a buscar
 
 async function analizarImagen(filePath) {
@@ -20,15 +20,15 @@ async function analizarImagen(filePath) {
 }
 
 async function analizarTodasLasImagenes() {
-  if (!fs.existsSync(SALIDA_DIR)) {
-    console.log('No existe la carpeta Salida.');
+  if (!fs.existsSync(ENTRADA_DIR)) {
+    console.log('No existe la carpeta entrada.');
     return;
   }
-  const archivos = fs.readdirSync(SALIDA_DIR).filter(f =>
+  const archivos = fs.readdirSync(ENTRADA_DIR).filter(f =>
     f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.png')
   );
   for (const archivo of archivos) {
-    const filePath = path.join(SALIDA_DIR, archivo);
+    const filePath = path.join(ENTRADA_DIR, archivo);
     await analizarImagen(filePath);
   }
 }
