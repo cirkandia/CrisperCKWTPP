@@ -13,17 +13,6 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR);
 }
 
-// --- Revisar carpeta entrada ---
-function hayImagenesEnEntrada() {
-  if (!fs.existsSync(ENTRADA_DIR)) return false;
-  const archivos = fs.readdirSync(ENTRADA_DIR);
-  return archivos.some(nombre =>
-    nombre.endsWith('.jpg') ||
-    nombre.endsWith('.jpeg') ||
-    nombre.endsWith('.png')
-  );
-}
-
 // --- Revisar si hoy es día de envío ---
 function esDiaDeEnvio() {
   const hoy = new Date();
@@ -35,16 +24,15 @@ function esDiaDeEnvio() {
   return diasEnvio.includes(dia);
 }
 
-// --- Revisar si ya se envió en este día ---
-function yaSeEnvioHoy() {
+// --- Revisar si ya se envió este mes ---
+function yaSeEnvioEsteMes() {
   if (!fs.existsSync(FECHA_FILE)) return false;
   try {
-    const { year, month, day } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
+    const { year, month } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
     const hoy = new Date();
     return (
       hoy.getFullYear() === year &&
-      hoy.getMonth() === month &&
-      hoy.getDate() === day
+      hoy.getMonth() === month
     );
   } catch {
     return false;
@@ -65,93 +53,7 @@ function ultimoDiaEnvioYaPaso() {
   }
 }
 
-// --- Obtener número de semana del año ---
-function getNumeroSemana(date = new Date()) {
-  const primerDiaAno = new Date(date.getFullYear(), 0, 1);
-  const dias = Math.floor((date - primerDiaAno) / (24 * 60 * 60 * 1000));
-  return Math.ceil((dias + primerDiaAno.getDay() + 1) / 7);
-}
-
-// --- Revisar si estamos en la semana de envío ---
-function esSemanaDeEnvio() {
-  const hoy = new Date();
-  const dia = hoy.getDate();
-  const diasEnvio = (process.env.DIAS_ENVIO || '')
-    .split(',')
-    .map(d => parseInt(d.trim(), 10))
-    .filter(Number.isInteger);
-  return diasEnvio.includes(dia);
-}
-
-// --- Revisar si ya se envió en la semana actual ---
-function yaSeEnvioEstaSemana() {
-  if (!fs.existsSync(FECHA_FILE)) return false;
-  try {
-    const { year, semana } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
-    const hoy = new Date();
-    const semanaActual = getNumeroSemana(hoy);
-    return hoy.getFullYear() === year && semanaActual === semana;
-  } catch {
-    return false;
-  }
-}
-
-// --- Revisar si la última semana de envío ya terminó ---
-function ultimaSemanaEnvioYaPaso() {
-  if (!fs.existsSync(FECHA_FILE)) return false;
-  try {
-    const { year, semana } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
-    const hoy = new Date();
-    const semanaActual = getNumeroSemana(hoy);
-    // Si la semana guardada es menor que la actual, ya pasó
-    return hoy.getFullYear() > year || (hoy.getFullYear() === year && semanaActual > semana);
-  } catch {
-    return false;
-  }
-}
-
-// --- Revisar si ya se envió en este mes ---
-function yaSeEnvioEsteMes() {
-  if (!fs.existsSync(FECHA_FILE)) return false;
-  try {
-    const { year, month } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
-    const hoy = new Date();
-    return (
-      hoy.getFullYear() === year &&
-      hoy.getMonth() === month
-    );
-  } catch {
-    return false;
-  }
-}
-
 // --- FILTRO PRINCIPAL ---
-if (hayImagenesEnEntrada()) {
-  const archivos = fs.readdirSync(ENTRADA_DIR).filter(nombre =>
-    nombre.endsWith('.jpg') ||
-    nombre.endsWith('.jpeg') ||
-    nombre.endsWith('.png')
-  );
-  console.log('Hay imágenes en la carpeta "entrada":');
-  for (const nombreArchivo of archivos) {
-    // Evita path traversal
-    if (nombreArchivo.includes('..') || path.isAbsolute(nombreArchivo)) {
-      console.warn(`Archivo ignorado por posible path traversal: ${nombreArchivo}`);
-      continue;
-    }
-    const filePath = path.join(ENTRADA_DIR, nombreArchivo);
-    // Verifica que el archivo esté realmente dentro de la carpeta entrada (seguro multiplataforma)
-    const entradaDirAbs = path.resolve(ENTRADA_DIR) + path.sep;
-    const filePathAbs = path.resolve(filePath);
-    if (!filePathAbs.startsWith(entradaDirAbs)) {
-      console.warn(`Archivo fuera de la carpeta entrada: ${nombreArchivo}`);
-      continue;
-    }
-    console.log('-', nombreArchivo);
-    // Aquí puedes procesar el archivo seguro: filePathAbs
-  }
-  process.exit(0); // Termina el programa, no ejecuta el bot
-}
 
 if (esDiaDeEnvio()) {
   if (!yaSeEnvioEsteMes()) {
@@ -197,10 +99,6 @@ async function enviarMensajes(sock) {
   // Envía dos mensajes de texto al grupo
   await sock.sendMessage(grupoJid, { text: "Primer mensaje automático del bot." });
   await sock.sendMessage(grupoJid, { text: "Segundo mensaje automático del bot." });
-
-  // Guarda la fecha/hora del envío automático
-  const fechaEnvio = new Date().toISOString();
-  fs.writeFileSync(FECHA_FILE, JSON.stringify({ fechaEnvio }));
 
   // Envía todos los archivos desde la carpeta Salida
   const salidaDir = path.join(__dirname, 'Salida');
@@ -259,5 +157,3 @@ async function enviarMensajes(sock) {
   // Finaliza el proceso automáticamente
   process.exit(0);
 }
-
-main();

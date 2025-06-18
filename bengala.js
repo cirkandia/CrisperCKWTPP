@@ -4,9 +4,14 @@ const path = require('path');
 
 const GRUPO_NOMBRE = process.env.GPRUEBA;
 const SALIDA_DIR = path.join(__dirname, 'Salida');
+const ENTRADA_DIR = path.join(__dirname, 'entrada');
 
 if (!fs.existsSync(SALIDA_DIR)) {
   fs.mkdirSync(SALIDA_DIR);
+}
+
+if (!fs.existsSync(ENTRADA_DIR)) {
+  fs.mkdirSync(ENTRADA_DIR);
 }
 
 (async () => {
@@ -85,16 +90,24 @@ if (!fs.existsSync(SALIDA_DIR)) {
       const arr = await res.arrayBuffer();
       return Array.from(new Uint8Array(arr));
     }, src);
-    fs.writeFileSync(path.join(SALIDA_DIR, `img_${i + 1}.jpg`), Buffer.from(buffer));
+    fs.writeFileSync(path.join(ENTRADA_DIR, `img_${i + 1}.jpg`), Buffer.from(buffer));
     console.log(`Imagen ${i + 1} guardada.`);
   }
 
-  console.log('¡Listo! Imágenes descargadas en la carpeta Salida.');
+  console.log('¡Listo! Imágenes descargadas en la carpeta entrada.');
   await browser.close();
+
+  // Ejecutar Secretario.js después de descargar las imágenes
+  try {
+    console.log('Ejecutando el analizador de imágenes (Secretario.js)...');
+    require('child_process').execSync('node Secretario.js', { stdio: 'inherit' });
+  } catch (err) {
+    console.error('Error al ejecutar Secretario.js:', err.message);
+  }
 })();
 
 // Nueva sección para verificar y advertir sobre posibles problemas de seguridad en los archivos
-fs.readdir(SALIDA_DIR, (err, archivos) => {
+fs.readdir(ENTRADA_DIR, (err, archivos) => {
   if (err) throw err;
 
   archivos.forEach(archivo => {
@@ -108,10 +121,10 @@ fs.readdir(SALIDA_DIR, (err, archivos) => {
       console.warn(`Archivo ignorado por posible path traversal: ${nombreArchivo}`);
       return;
     }
-    const filePath = path.join(SALIDA_DIR, nombreArchivo);
-    // Verifica que el archivo esté realmente dentro de la carpeta Salida
-    if (!filePath.startsWith(SALIDA_DIR)) {
-      console.warn(`Archivo fuera de la carpeta Salida: ${nombreArchivo}`);
+    const filePath = path.join(ENTRADA_DIR, nombreArchivo);
+    // Verifica que el archivo esté realmente dentro de la carpeta entrada
+    if (!filePath.startsWith(ENTRADA_DIR)) {
+      console.warn(`Archivo fuera de la carpeta entrada: ${nombreArchivo}`);
       return;
     }
   });
