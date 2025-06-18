@@ -3,6 +3,7 @@ const { makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys
 const fs = require('fs');
 const path = require('path');
 const qrcode = require('qrcode-terminal');
+const { execSync } = require('child_process');
 
 const DATA_DIR = path.join(__dirname, 'data');
 const FECHA_FILE = path.join(DATA_DIR, 'fecha_ultimo_envio.json');
@@ -42,8 +43,23 @@ if (hayImagenesEnEntrada()) {
     nombre.endsWith('.png')
   );
   console.log('Hay imágenes en la carpeta "entrada":');
-  archivos.forEach(nombre => console.log('-', nombre));
-  // Aquí puedes procesar las imágenes como quieras
+  for (const nombreArchivo of archivos) {
+    // Evita path traversal
+    if (nombreArchivo.includes('..') || path.isAbsolute(nombreArchivo)) {
+      console.warn(`Archivo ignorado por posible path traversal: ${nombreArchivo}`);
+      continue;
+    }
+    const filePath = path.join(ENTRADA_DIR, nombreArchivo);
+    // Verifica que el archivo esté realmente dentro de la carpeta entrada (seguro multiplataforma)
+    const entradaDirAbs = path.resolve(ENTRADA_DIR) + path.sep;
+    const filePathAbs = path.resolve(filePath);
+    if (!filePathAbs.startsWith(entradaDirAbs)) {
+      console.warn(`Archivo fuera de la carpeta entrada: ${nombreArchivo}`);
+      continue;
+    }
+    console.log('-', nombreArchivo);
+    // Aquí puedes procesar el archivo seguro: filePathAbs
+  }
   process.exit(0); // Termina el programa, no ejecuta el bot
 }
 
@@ -93,8 +109,10 @@ async function enviarMensajes(sock) {
         continue;
       }
       const filePath = path.join(salidaDir, nombreArchivo);
-      // Verifica que el archivo esté realmente dentro de la carpeta Salida
-      if (!filePath.startsWith(salidaDir)) {
+      // Verifica que el archivo esté realmente dentro de la carpeta Salida (seguro multiplataforma)
+      const salidaDirAbs = path.resolve(salidaDir) + path.sep;
+      const filePathAbs = path.resolve(filePath);
+      if (!filePathAbs.startsWith(salidaDirAbs)) {
         console.warn(`Archivo fuera de la carpeta Salida: ${nombreArchivo}`);
         continue;
       }
@@ -103,7 +121,7 @@ async function enviarMensajes(sock) {
         nombreArchivo.endsWith('.jpeg') ||
         nombreArchivo.endsWith('.png')
       ) {
-        const buffer = fs.readFileSync(filePath);
+        const buffer = fs.readFileSync(filePathAbs);
         await sock.sendMessage(grupoJid, {
           image: buffer,
           fileName: nombreArchivo,
@@ -114,7 +132,7 @@ async function enviarMensajes(sock) {
         if (nombreArchivo.endsWith('.pdf')) mimetype = 'application/pdf';
         else if (nombreArchivo.endsWith('.txt')) mimetype = 'text/plain';
 
-        const buffer = fs.readFileSync(filePath);
+        const buffer = fs.readFileSync(filePathAbs);
         await sock.sendMessage(grupoJid, {
           document: buffer,
           fileName: nombreArchivo,
@@ -131,3 +149,9 @@ async function enviarMensajes(sock) {
 }
 
 main();
+
+if (esDiaDeEnvio()) {
+  console.log('Hoy es un día de traer imágenes del grupo. Ejecutando bengala.js...');
+  execSync('node bengala.js', { stdio: 'inherit' });
+  process.exit(0);
+}
