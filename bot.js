@@ -35,6 +35,96 @@ function esDiaDeEnvio() {
   return diasEnvio.includes(dia);
 }
 
+// --- Revisar si ya se envió en este día ---
+function yaSeEnvioHoy() {
+  if (!fs.existsSync(FECHA_FILE)) return false;
+  try {
+    const { year, month, day } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
+    const hoy = new Date();
+    return (
+      hoy.getFullYear() === year &&
+      hoy.getMonth() === month &&
+      hoy.getDate() === day
+    );
+  } catch {
+    return false;
+  }
+}
+
+// --- Revisar si el último día de envío ya pasó ---
+function ultimoDiaEnvioYaPaso() {
+  if (!fs.existsSync(FECHA_FILE)) return false;
+  try {
+    const { year, month, day } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
+    const hoy = new Date();
+    const fechaUltimoEnvio = new Date(year, month, day);
+    // Si hoy es posterior al último día de envío registrado
+    return hoy > fechaUltimoEnvio;
+  } catch {
+    return false;
+  }
+}
+
+// --- Obtener número de semana del año ---
+function getNumeroSemana(date = new Date()) {
+  const primerDiaAno = new Date(date.getFullYear(), 0, 1);
+  const dias = Math.floor((date - primerDiaAno) / (24 * 60 * 60 * 1000));
+  return Math.ceil((dias + primerDiaAno.getDay() + 1) / 7);
+}
+
+// --- Revisar si estamos en la semana de envío ---
+function esSemanaDeEnvio() {
+  const hoy = new Date();
+  const dia = hoy.getDate();
+  const diasEnvio = (process.env.DIAS_ENVIO || '')
+    .split(',')
+    .map(d => parseInt(d.trim(), 10))
+    .filter(Number.isInteger);
+  return diasEnvio.includes(dia);
+}
+
+// --- Revisar si ya se envió en la semana actual ---
+function yaSeEnvioEstaSemana() {
+  if (!fs.existsSync(FECHA_FILE)) return false;
+  try {
+    const { year, semana } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
+    const hoy = new Date();
+    const semanaActual = getNumeroSemana(hoy);
+    return hoy.getFullYear() === year && semanaActual === semana;
+  } catch {
+    return false;
+  }
+}
+
+// --- Revisar si la última semana de envío ya terminó ---
+function ultimaSemanaEnvioYaPaso() {
+  if (!fs.existsSync(FECHA_FILE)) return false;
+  try {
+    const { year, semana } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
+    const hoy = new Date();
+    const semanaActual = getNumeroSemana(hoy);
+    // Si la semana guardada es menor que la actual, ya pasó
+    return hoy.getFullYear() > year || (hoy.getFullYear() === year && semanaActual > semana);
+  } catch {
+    return false;
+  }
+}
+
+// --- Revisar si ya se envió en este mes ---
+function yaSeEnvioEsteMes() {
+  if (!fs.existsSync(FECHA_FILE)) return false;
+  try {
+    const { year, month } = JSON.parse(fs.readFileSync(FECHA_FILE, 'utf8'));
+    const hoy = new Date();
+    return (
+      hoy.getFullYear() === year &&
+      hoy.getMonth() === month
+    );
+  } catch {
+    return false;
+  }
+}
+
 // --- FILTRO PRINCIPAL ---
 if (hayImagenesEnEntrada()) {
   const archivos = fs.readdirSync(ENTRADA_DIR).filter(nombre =>
@@ -63,8 +153,22 @@ if (hayImagenesEnEntrada()) {
   process.exit(0); // Termina el programa, no ejecuta el bot
 }
 
-if (!esDiaDeEnvio()) {
-  console.log('Hoy NO es un día de envío. El bot no enviará mensajes ni archivos.');
+if (esDiaDeEnvio()) {
+  if (!yaSeEnvioEsteMes()) {
+    main();
+  } else {
+    console.log('Ya se envió este mes. No se repite el envío ni se trae archivos.');
+    process.exit(0);
+  }
+} else {
+  if (ultimoDiaEnvioYaPaso()) {
+    console.log('Ya pasó el último día de envío. Ejecutando bengala.js...');
+    execSync('node bengala.js', { stdio: 'inherit' });
+    // Borra el archivo de control para permitir el ciclo el próximo mes
+    fs.unlinkSync(FECHA_FILE);
+  } else {
+    console.log('No es día de envío y no hay nada pendiente. No se hace nada.');
+  }
   process.exit(0);
 }
 
@@ -144,14 +248,16 @@ async function enviarMensajes(sock) {
     console.log('La carpeta Salida no existe.');
   }
 
+  // Guarda la fecha del envío (año, mes, día)
+  const hoy = new Date();
+  fs.writeFileSync(FECHA_FILE, JSON.stringify({
+    year: hoy.getFullYear(),
+    month: hoy.getMonth(),
+    day: hoy.getDate()
+  }));
+
   // Finaliza el proceso automáticamente
   process.exit(0);
 }
 
 main();
-
-if (esDiaDeEnvio()) {
-  console.log('Hoy es un día de traer imágenes del grupo. Ejecutando bengala.js...');
-  execSync('node bengala.js', { stdio: 'inherit' });
-  process.exit(0);
-}

@@ -14,9 +14,25 @@ if (!fs.existsSync(SALIDA_DIR)) {
   const page = await browser.newPage();
   await page.goto('https://web.whatsapp.com');
 
-  // Espera a que el usuario escanee el QR y WhatsApp Web cargue
-  console.log('Escanea el QR en la ventana de Chrome y espera a que cargue WhatsApp Web...');
-  await page.waitForSelector('._3Bc7H', { timeout: 0 }); // Espera indefinidamente hasta que cargue el chat
+  // Espera un poco para que cargue la página
+  await page.waitForTimeout(3000);
+
+  // Verifica si hay QR (no autenticado)
+  const hayQR = await page.$('canvas[aria-label="Scan me!"]');
+  if (hayQR) {
+    console.log('No hay sesión activa de WhatsApp Web. Por favor, inicia sesión manualmente en el navegador antes de ejecutar este script.');
+    await browser.close();
+    process.exit(1);
+  }
+
+  // Verifica si ya está autenticado (busca el selector de la barra de búsqueda)
+  try {
+    await page.waitForSelector('._2vDPL', { timeout: 10000 });
+  } catch {
+    console.log('No se detectó una sesión activa de WhatsApp Web. Abortando.');
+    await browser.close();
+    process.exit(1);
+  }
 
   // Busca el grupo por nombre y haz clic
   await page.waitForSelector('._2vDPL'); // Selector de la barra de búsqueda
