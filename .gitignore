@@ -1,0 +1,14 @@
+# Archivos y carpetas de autenticación y sesiones
+auth_info_bot/
+data/
+.env
+
+# Archivos temporales y de sistema
+*.log
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Archivos de salida o entrada que puedan contener datos sensibles
+entrada/
+Salida/
