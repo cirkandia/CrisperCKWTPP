@@ -55,43 +55,50 @@ if (!fs.existsSync(ENTRADA_DIR)) {
   // Espera a que cargue el chat del grupo
   await page.waitForSelector('._1-FMR');
 
-  // Función para hacer scroll hacia arriba y recolectar imágenes
-  async function recolectarImagenesNecesarias() {
-    let imagenes = [];
-    let intentos = 0;
-    const maxIntentos = 20; // Limita el número de scrolls para evitar bucles infinitos
-
-    while (imagenes.length < 10 && intentos < maxIntentos) {
-      imagenes = await page.evaluate(() => {
-        const imgs = Array.from(document.querySelectorAll('img[src^="blob:"]'));
-        return imgs.map(img => img.src);
+  // Modifica la función para recolectar imágenes y remitentes
+  async function recolectarImagenesYRemitentes() {
+    return await page.evaluate(() => {
+      // Busca todos los mensajes con imágenes
+      const mensajes = Array.from(document.querySelectorAll('div.message-in, div.message-out'));
+      const resultados = [];
+      mensajes.forEach(msg => {
+        const img = msg.querySelector('img[src^="blob:"]');
+        if (img) {
+          // Busca el nombre del remitente (en grupos suele estar en un span con color)
+          let remitente = null;
+          const nombreSpan = msg.querySelector('span[dir="auto"]');
+          if (nombreSpan) remitente = nombreSpan.textContent;
+          resultados.push({
+            src: img.src,
+            remitente: remitente || 'Desconocido'
+          });
+        }
       });
-      if (imagenes.length >= 10) break;
-      // Scroll hacia arriba en el chat
-      await page.evaluate(() => {
-        const mensajes = document.querySelector('._1-FMR');
-        if (mensajes) mensajes.scrollTop = 0;
-      });
-      await page.waitForTimeout(1500); // Espera a que carguen más mensajes
-      intentos++;
-    }
-    return imagenes.slice(-10); // Solo las últimas 10
+      return resultados;
+    });
   }
 
-  const imagenes = await recolectarImagenesNecesarias();
+  const imagenesYRemitentes = await recolectarImagenesYRemitentes();
+  const imagenes = imagenesYRemitentes.slice(-10); // últimas 10
 
   console.log(`Encontradas ${imagenes.length} imágenes. Descargando...`);
 
   // Descarga las imágenes usando el contexto de la página
   for (let i = 0; i < imagenes.length; i++) {
-    const src = imagenes[i];
+    const { src, remitente } = imagenes[i];
     const buffer = await page.evaluate(async (src) => {
       const res = await fetch(src);
       const arr = await res.arrayBuffer();
       return Array.from(new Uint8Array(arr));
     }, src);
-    fs.writeFileSync(path.join(ENTRADA_DIR, `img_${i + 1}.jpg`), Buffer.from(buffer));
-    console.log(`Imagen ${i + 1} guardada.`);
+
+    // Limpia el nombre del remitente para usarlo como nombre de archivo
+    let nombreLimpio = remitente.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+    if (!nombreLimpio) nombreLimpio = 'Desconocido';
+    const nombreArchivo = `${nombreLimpio}_${i + 1}.jpg`;
+
+    fs.writeFileSync(path.join(ENTRADA_DIR, nombreArchivo), Buffer.from(buffer));
+    console.log(`Imagen ${i + 1} guardada como ${nombreArchivo}. Remitente: ${remitente}`);
   }
 
   console.log('¡Listo! Imágenes descargadas en la carpeta entrada.');
