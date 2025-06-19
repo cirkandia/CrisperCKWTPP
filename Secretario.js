@@ -4,7 +4,8 @@ const Tesseract = require('tesseract.js');
 const notifier = require('node-notifier');
 
 const ENTRADA_DIR = path.join(__dirname, 'entrada');
-const PATRON = /Transferencia exitosa/i; // Detecta comprobantes válidos
+const SALIDA_TXT = path.join(__dirname, 'comprobantes.txt');
+const PATRON = /Transferencia exitosa/i;
 
 async function analizarImagen(filePath) {
   try {
@@ -57,18 +58,23 @@ async function obtenerDatosComprobantes() {
     });
     return;
   }
-  comprobantes.forEach((c, idx) => {
-    const mensaje = 
-      `Remitente: ${c.remitente}\n` +
-      `Comprobante: ${c.comprobante}\n` +
-      `Fecha: ${c.fecha}\n` +
-      `Hora: ${c.hora}\n` +
-      `Valor: ${c.valor}\n` +
-      `Destinatario: ${c.destinatario}\n` +
-      `Cuenta destino: ${c.cuenta}`;
-    notifier.notify({
-      title: `Comprobante #${idx + 1}`,
-      message: mensaje
-    });
+
+  // Notificación resumida
+  let resumen = 'Remitente | Fecha | Valor\n';
+  resumen += comprobantes.map(c =>
+    `${c.remitente} | ${c.fecha} | ${c.valor}`
+  ).join('\n');
+  if (resumen.length > 500) resumen = resumen.slice(0, 500) + '...';
+
+  notifier.notify({
+    title: 'Comprobantes encontrados',
+    message: resumen
   });
+
+  // Detalle completo en archivo tipo tabla
+  let tabla = 'Remitente\tComprobante\tFecha\tHora\tValor\tDestinatario\tCuenta destino\n';
+  tabla += comprobantes.map(c =>
+    `${c.remitente}\t${c.comprobante}\t${c.fecha}\t${c.hora}\t${c.valor}\t${c.destinatario}\t${c.cuenta}`
+  ).join('\n');
+  fs.writeFileSync(SALIDA_TXT, tabla, 'utf8');
 })();
