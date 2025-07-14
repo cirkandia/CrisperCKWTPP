@@ -134,8 +134,10 @@ async function enviarMensajes(sock) {
   const grupoJid = process.env.GPRUEBA;
 
   // Envía dos mensajes de texto al grupo
-  await sock.sendMessage(grupoJid, { text: "Primer mensaje automático del bot." });
-  await sock.sendMessage(grupoJid, { text: "Segundo mensaje automático del bot." });
+  await sock.sendMessage(grupoJid, { text: "Hola a Todos" });
+  await sock.sendMessage(grupoJid, { text: "Para efectos de automatizacion he sido creado" });
+  await sock.sendMessage(grupoJid, { text: "Esto hace parte de un Sistema automatico" });
+  await sock.sendMessage(grupoJid, { text: "Por favor envien los comprobantes de pago de este mes" });
 
   // Envía todos los archivos desde la carpeta Salida
   const salidaDir = path.join(__dirname, 'Salida');
