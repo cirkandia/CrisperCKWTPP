@@ -64,14 +64,51 @@ if (esDiaDeEnvio()) {
   }
 } else {
   if (ultimoDiaEnvioYaPaso()) {
-    console.log('Ya pasó el último día de envío. Ejecutando bengala.js...');
-    execSync('node bengala.js', { stdio: 'inherit' });
-    // Borra el archivo de control para permitir el ciclo el próximo mes
-    fs.unlinkSync(FECHA_FILE);
+    (async () => {
+      const { state } = await useMultiFileAuthState('auth_info_bot');
+      const sock = makeWASocket({ auth: state });
+
+      let nombreGrupo = null; // <-- Mueve aquí la declaración
+
+      // Espera a que la conexión esté abierta
+      await new Promise((resolve, reject) => {
+        sock.ev.on('connection.update', async (update) => {
+          if (update.connection === 'open') {
+            const grupoJid = process.env.GPRUEBA;
+            try {
+              const metadata = await sock.groupMetadata(grupoJid);
+              if (metadata && metadata.subject) {
+                nombreGrupo = metadata.subject;
+                console.log(`Nombre del grupo (${grupoJid}): ${nombreGrupo}`);
+              } else {
+                console.warn('No se pudo obtener el nombre del grupo: metadata vacía o sin subject');
+              }
+            } catch (err) {
+              console.warn('No se pudo obtener el nombre del grupo:', err.message);
+            }
+            if (sock.ws && sock.ws.close) sock.ws.close();
+            resolve();
+          }
+          if (update.connection === 'close') {
+            reject(new Error('Conexión cerrada antes de obtener metadata.'));
+          }
+        });
+      });
+
+      if (nombreGrupo) {
+        console.log('Ya pasó el último día de envío. Ejecutando bengala.js...');
+        execSync(`node bengala.js "${nombreGrupo}"`, { stdio: 'inherit' });
+        fs.unlinkSync(FECHA_FILE);
+      } else {
+        console.error('No se obtuvo el nombre del grupo. No se ejecuta bengala.js.');
+      }
+      process.exit(0);
+    })();
   } else {
     console.log('No es día de envío y no hay nada pendiente. No se hace nada.');
+    process.exit(0);
   }
-  process.exit(0);
+  // No pongas process.exit(0) aquí, ya que el async IIFE lo maneja
 }
 
 async function main() {

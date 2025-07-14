@@ -12,3 +12,5 @@ Thumbs.db
 # Archivos de salida o entrada que puedan contener datos sensibles
 entrada/
 Salida/
+spa.traineddata
+firefox_profile/
