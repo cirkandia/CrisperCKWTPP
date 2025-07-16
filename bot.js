@@ -131,13 +131,13 @@ async function main() {
 }
 
 async function enviarMensajes(sock) {
-  const grupoJid = process.env.GPRUEBA;
+  const grupoJid = process.env.GRUPO;
 
   // Envía dos mensajes de texto al grupo
   await sock.sendMessage(grupoJid, { text: "Hola a Todos" });
   await sock.sendMessage(grupoJid, { text: "Para efectos de automatizacion he sido creado" });
-  await sock.sendMessage(grupoJid, { text: "Esto hace parte de un Sistema automatico" });
   await sock.sendMessage(grupoJid, { text: "Por favor envien los comprobantes de pago de este mes" });
+  await sock.sendMessage(grupoJid, { text: "Tengan una bonita semana" });
 
   // Envía todos los archivos desde la carpeta Salida
   const salidaDir = path.join(__dirname, 'Salida');
@@ -166,7 +166,7 @@ async function enviarMensajes(sock) {
         await sock.sendMessage(grupoJid, {
           image: buffer,
           fileName: nombreArchivo,
-          caption: `Imagen: ${nombreArchivo}`
+          //caption: `Imagen: ${nombreArchivo}`
         });
       } else {
         let mimetype = 'application/octet-stream';
