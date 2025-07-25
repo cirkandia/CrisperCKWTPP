@@ -56,7 +56,7 @@ if (!fs.existsSync(ENTRADA_DIR)) fs.mkdirSync(ENTRADA_DIR);
   // Scroll y recolecta imágenes
   let imagenes = [];
   let intentos = 0;
-  while (imagenes.length < 10 && intentos < 20) {
+  while (imagenes.length < 5 && intentos < 20) {
     imagenes = await page.evaluate(() => {
       const mensajes = Array.from(document.querySelectorAll('div.message-in, div.message-out'));
       const resultados = [];
@@ -80,7 +80,7 @@ if (!fs.existsSync(ENTRADA_DIR)) fs.mkdirSync(ENTRADA_DIR);
     intentos++;
   }
 
-  imagenes = imagenes.slice(-10);
+  imagenes = imagenes.slice(-5);
 
   console.log(`Encontradas ${imagenes.length} imágenes. Descargando...`);
 
