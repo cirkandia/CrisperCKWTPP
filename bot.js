@@ -9,6 +9,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const FECHA_FILE = path.join(DATA_DIR, 'fecha_ultimo_envio.json');
 const ENTRADA_DIR = path.join(__dirname, 'entrada');
 
+const grupoJid = process.env.GRUPO;
+
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR);
 }
@@ -74,7 +76,7 @@ if (esDiaDeEnvio()) {
       await new Promise((resolve, reject) => {
         sock.ev.on('connection.update', async (update) => {
           if (update.connection === 'open') {
-            const grupoJid = process.env.GPRUEBA;
+            
             try {
               const metadata = await sock.groupMetadata(grupoJid);
               if (metadata && metadata.subject) {
@@ -131,7 +133,7 @@ async function main() {
 }
 
 async function enviarMensajes(sock) {
-  const grupoJid = process.env.GRUPO;
+  
 
   // Envía dos mensajes de texto al grupo
   await sock.sendMessage(grupoJid, { text: "Hola a Todos" });
